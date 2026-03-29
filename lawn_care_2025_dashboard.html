@@ -1,0 +1,174 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .dash { padding: 1rem 0; font-family: var(--font-sans); }
+  .header { margin-bottom: 1.5rem; }
+  .header h1 { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px 16px; }
+  .metric-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .metric-sub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 3px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  .chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .chart-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 12px; }
+  .full-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 11px; color: var(--color-text-secondary); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: left; padding: 6px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }
+  tbody td { padding: 7px 10px; color: var(--color-text-primary); border-bottom: 0.5px solid var(--color-border-tertiary); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--color-background-secondary); }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .badge-weekly { background: #EAF3DE; color: #27500A; }
+  .badge-biweekly { background: #E6F1FB; color: #0C447C; }
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; background: var(--color-background-secondary); border-radius: 3px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  @media (prefers-color-scheme: dark) {
+    .badge-weekly { background: #27500A; color: #C0DD97; }
+    .badge-biweekly { background: #0C447C; color: #B5D4F4; }
+  }
+</style>
+
+<div class="dash">
+  <div class="header">
+    <h1>2025 end-of-year summary</h1>
+    <p>Lawn care business · 11 customers · Yukon & Edmond, OK</p>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Revenue per customer</div>
+      <div style="position:relative;height:260px;"><canvas id="revenueChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Weekly vs biweekly split</div>
+      <div style="position:relative;height:260px;"><canvas id="freqChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="full-card">
+    <div class="chart-title">CO₂ saved per customer (lbs)</div>
+    <div style="position:relative;height:200px;"><canvas id="co2Chart"></canvas></div>
+  </div>
+
+  <div class="full-card">
+    <div class="chart-title" style="margin-bottom:12px;">Customer breakdown</div>
+    <table>
+      <thead><tr>
+        <th>Customer</th><th>City</th><th>Frequency</th><th>Price / visit</th><th>Annual revenue</th><th>CO₂ saved</th><th>Revenue share</th>
+      </tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const customers = [
+  {name:"Cristina",  city:"Edmond",  freq:"Weekly",    price:60, rev:1440, co2:144},
+  {name:"Darren",    city:"Yukon",   freq:"Biweekly",  price:65, rev:780,  co2:72},
+  {name:"Denise",    city:"Yukon",   freq:"Weekly",    price:40, rev:960,  co2:144},
+  {name:"Garett",    city:"Yukon",   freq:"Biweekly",  price:45, rev:540,  co2:72},
+  {name:"Heather",   city:"Yukon",   freq:"Weekly",    price:60, rev:480,  co2:144},
+  {name:"Jimmy",     city:"Yukon",   freq:"Weekly",    price:50, rev:1200, co2:144},
+  {name:"Kiara",     city:"Yukon",   freq:"Biweekly",  price:65, rev:780,  co2:72},
+  {name:"Leo",       city:"Yukon",   freq:"Biweekly",  price:50, rev:600,  co2:72},
+  {name:"Melissa",   city:"Yukon",   freq:"Biweekly",  price:65, rev:780,  co2:72},
+  {name:"Teri",      city:"Yukon",   freq:"Biweekly",  price:55, rev:660,  co2:72},
+  {name:"Travis",    city:"Yukon",   freq:"Weekly",    price:40, rev:960,  co2:144},
+];
+
+const totalRev = customers.reduce((a,c)=>a+c.rev,0);
+const totalCO2 = customers.reduce((a,c)=>a+c.co2,0);
+const avgRev = totalRev / customers.length;
+const weeklyCount = customers.filter(c=>c.freq==="Weekly").length;
+const biwkCount = customers.filter(c=>c.freq==="Biweekly").length;
+
+document.getElementById('metrics').innerHTML = `
+  <div class="metric"><div class="metric-label">Total annual revenue</div><div class="metric-value">$${totalRev.toLocaleString()}</div><div class="metric-sub">across all customers</div></div>
+  <div class="metric"><div class="metric-label">Total customers</div><div class="metric-value">11</div><div class="metric-sub">${weeklyCount} weekly · ${biwkCount} biweekly</div></div>
+  <div class="metric"><div class="metric-label">Avg revenue / customer</div><div class="metric-value">$${Math.round(avgRev).toLocaleString()}</div><div class="metric-sub">per year</div></div>
+  <div class="metric"><div class="metric-label">Total CO₂ saved</div><div class="metric-value">${totalCO2.toLocaleString()} lbs</div><div class="metric-sub">electric/eco impact</div></div>
+`;
+
+const sorted = customers.slice().sort((a,b)=>b.rev-a.rev);
+const greenPalette = ['#639922','#7AAB2A','#91BE33','#A8D13C','#BFDE55','#C8E468','#D1EA7B','#DAF09E','#E3F6B1','#ECF9C4','#F5FDD7'];
+
+new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: sorted.map(c=>c.name),
+    datasets: [{ data: sorted.map(c=>c.rev), backgroundColor: greenPalette, borderRadius: 4, borderSkipped: false }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' $'+ctx.raw.toLocaleString() } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#888' } },
+      y: { grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { font: { size: 10 }, color: '#888', callback: v => '$'+v } }
+    }
+  }
+});
+
+const weeklyRev = customers.filter(c=>c.freq==="Weekly").reduce((a,c)=>a+c.rev,0);
+const biwkRev = customers.filter(c=>c.freq==="Biweekly").reduce((a,c)=>a+c.rev,0);
+new Chart(document.getElementById('freqChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Weekly','Biweekly'],
+    datasets: [{ data: [weeklyRev, biwkRev], backgroundColor: ['#639922','#378ADD'], borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` $${ctx.raw.toLocaleString()} (${Math.round(ctx.raw/totalRev*100)}%)` } }
+    }
+  }
+});
+
+const co2Sorted = customers.slice().sort((a,b)=>b.co2-a.co2);
+new Chart(document.getElementById('co2Chart'), {
+  type: 'bar',
+  data: {
+    labels: co2Sorted.map(c=>c.name),
+    datasets: [{ data: co2Sorted.map(c=>c.co2), backgroundColor: co2Sorted.map(c=>c.freq==="Weekly"?'#639922':'#378ADD'), borderRadius: 4, borderSkipped: false }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' '+ctx.raw+' lbs CO₂' } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#888' } },
+      y: { grid: { color: 'rgba(128,128,128,0.15)' }, ticks: { font: { size: 10 }, color: '#888', callback: v => v+' lbs' } }
+    }
+  }
+});
+
+document.getElementById('tableBody').innerHTML = sorted.map(c => {
+  const pct = (c.rev/totalRev*100).toFixed(1);
+  const barW = Math.round(c.rev/sorted[0].rev*100);
+  const barColor = c.freq==="Weekly"?'#639922':'#378ADD';
+  return `<tr>
+    <td style="font-weight:500">${c.name}</td>
+    <td style="color:var(--color-text-secondary)">${c.city}</td>
+    <td><span class="badge badge-${c.freq.toLowerCase()}">${c.freq}</span></td>
+    <td>$${c.price}</td>
+    <td>$${c.rev.toLocaleString()}</td>
+    <td>${c.co2} lbs</td>
+    <td>
+      <div class="bar-wrap">
+        <div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${barColor}"></div></div>
+        <span style="font-size:11px;color:var(--color-text-secondary);min-width:32px">${pct}%</span>
+      </div>
+    </td>
+  </tr>`;
+}).join('');
+</script>
