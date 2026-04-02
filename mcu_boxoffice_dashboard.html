@@ -174,7 +174,7 @@ const sorted = raw.slice().sort((a,b)=>b.wg-a.wg);
 new Chart(document.getElementById('barChart'), {
   type: 'bar',
   data: {
-    labels: sorted.map(m => m.t.length > 22 ? m.t.slice(0,22)+'…' : m.t),
+    labels: sorted.map((m, i) => `${i+1}. ${m.t}`),,
     datasets: [
       { label: 'International', data: sorted.map(m=>m.ig/1e6), backgroundColor: '#378ADD', stack: 's' },
       { label: 'Domestic', data: sorted.map(m=>m.dg/1e6), backgroundColor: '#639922', stack: 's' }
